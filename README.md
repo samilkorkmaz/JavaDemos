@@ -1,2 +1,4 @@
 # JavaDemos
-Demos in Java
+Demos in Java.
+
+IDE: NetBeans
