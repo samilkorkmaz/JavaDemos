@@ -4,7 +4,6 @@ import java.awt.Dimension;
 import java.awt.Rectangle;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
-import java.text.DecimalFormat;
 import java.text.ParseException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -21,8 +20,8 @@ public final class DataPanel extends javax.swing.JPanel {
     public static final int PANEL_HEIGTH = 25;
     private final Val2XPanel jpVal2X;
 
-    TableValue[] prevComps;
-    MyTable myTable;
+    private final TableValue[] prevTableValues;
+    private final MyTable myTable;
 
     @Override
     public Dimension getPreferredSize() {
@@ -37,82 +36,111 @@ public final class DataPanel extends javax.swing.JPanel {
         jpVal2X = new Val2XPanel(rect);
         add(jpVal2X);
         this.myTable = myTable;
-        prevComps = new TableValue[myTable.getMaxRows()];
-        addCBAction(new ActionListener() {
+        prevTableValues = new TableValue[myTable.getMaxRows()];
+        jcbValType.addActionListener(new ActionListener() {
 
             @Override
             public void actionPerformed(ActionEvent e) {
-                if (myTable != null && myTable.isEditing()) { //UI creation has finished && a row is selected
+                if (myTable.isEditing()) { //A row is selected
                     System.out.println("Called cb action.");
                     int iEditingRow = myTable.getEditingRow();
-                    myTable.getCellEditor().stopCellEditing(); //to be able to update values in formatted text fields.
-                    TableValue tableVal = update(jcb.getSelectedIndex());
-                    myTable.setValueAt(tableVal, iEditingRow, 0);
+                    myTable.getCellEditor().stopCellEditing(); //to update values in formatted text fields.
+                    TableValue tableVal = update();
+                    myTable.setValueAt(tableVal, iEditingRow, 0); //triggers renderer
                 }
             }
         });
     }
 
-    private TableValue update(int changedIndex) {
-        TableValue tv = new TableValue(changedIndex);
-        if (changedIndex == 1) { //changed from 0 to 1, get data in 1X, calculate 2X
-            tv.setVal1X(getVal1X());
-            setVal2X(tv.getVal2X());
-        } else { //changed from 1 to 0, get data in 2X, calculate 1X
-            tv.setVal2X(getVal2X());
-            setVal1X(tv.getVal1X());
-        }
-        return tv;
-    }
-
-    public void setTableValue(TableValue tableVal, int iRow) {
-        if (!tableVal.isEqual(prevComps[iRow])) { //only update UI when value has changed to prevent action listeners from firing unnecessarily
-            setTableRow(iRow);
-            if (isIndexValTypeChanged(tableVal, prevComps[iRow])) {
-                setIndex(tableVal.getIndexValType()); //triggers combo box action listener                
+    private TableValue update() {
+        int currentIndex = myTable.getEditedDataPanel().jcbValType.getSelectedIndex();
+        int prevIndex = myTable.getEditedDataPanel().prevTableValues[myTable.getEditedRow()].getIndexValType();
+        TableValue tableVal = new TableValue(currentIndex);
+        if (currentIndex != prevIndex) { //we entered update due to a change in cb index
+            if (is2XType(currentIndex)) { //index changed from 1X to 2X, get data in 1X, calculate 2X
+                calc2XUsing1X(tableVal);
+            } else { //index changed from 2X to 1X, get data in 2X, calculate 1X
+                calc1XUsing2X(tableVal);
             }
-            setVal1X(tableVal.getVal1X()); //update display (editor and renderer)
-            setVal2X(tableVal.getVal2X()); //update display (editor and renderer)
-            prevComps[iRow] = tableVal;
-        }
+        } else { //we entered update due to intialization or focus lost of edited row, not cb index change
+            if (is2XType(currentIndex)) { //was and is 2X type, get data in 2X, calculate 1X
+                calc1XUsing2X(tableVal);
+            } else { //was and is 1X, get data in 1X, calculate 2X
+                calc2XUsing1X(tableVal);
+            }
+        }        
+        return tableVal;
     }
 
-    public TableValue getTableValue() {
-        return new TableValue(getIndex(), getIndex() == 0 ? getVal1X() : getVal2X());
+    private void calc2XUsing1X(TableValue tableVal) {
+        double val1X = myTable.getEditedDataPanel().getVal1X();
+        double val2X = TableValue.calcVal2X(val1X);
+        tableVal.setVal1X(val1X);
+        tableVal.setVal2X(val2X);
+    }
+
+    private void calc1XUsing2X(TableValue tableVal) {
+        double val2X = myTable.getEditedDataPanel().getVal2X();
+        double val1X = TableValue.calcVal1X(val2X);
+        tableVal.setVal1X(val1X);
+        tableVal.setVal2X(val2X);
+    }
+
+    private boolean is2XType(int valTypeIndex) {
+        return valTypeIndex == 1;
     }
 
     /**
-     * Return true when this is the first time or when IndexValType of current row has changed.
+     * Called by renderer and editor.
      *
      * @param tableVal
-     * @param prevTableVal
-     * @return
+     * @param iRow
      */
-    private boolean isIndexValTypeChanged(TableValue tableVal, TableValue prevTableVal) {
-        return prevTableVal == null || tableVal.getIndexValType() != prevTableVal.getIndexValType();
-    }
-
-    void setTableRow(int iRow) {
+    public void setTableValue(TableValue tableVal, int iRow) {
+        if (prevTableValues[iRow] == null) { //initial creation of renderer or editor
+            jcbValType.setSelectedIndex(tableVal.getIndexValType()); //triggers combo box action listener
+        } else if (tableVal.getIndexValType() != prevTableValues[iRow].getIndexValType()) { //change in cb index
+            jcbValType.setSelectedIndex(tableVal.getIndexValType()); //triggers combo box action listener                
+        }
+        prevTableValues[iRow] = tableVal;
+        //update display:
         jlTableRow.setText(String.valueOf(iRow + 1));
+        setVal1X(tableVal.getVal1X());
+        setVal2X(tableVal.getVal2X());
+        jftfVal1X.setVisible(!is2XType(tableVal.getIndexValType()));
+        jpVal2X.setVisible(is2XType(tableVal.getIndexValType()));
     }
 
-    public void setVal1X(double val1X) {
+    public TableValue getTableValue() {
+        return new TableValue(getIndex(), is2XType(getIndex()) ? getVal2X() : getVal1X());
+    }
+
+    private int getIndex() {
+        return jcbValType.getSelectedIndex();
+    }
+
+    private void setVal1X(double val1X) {
         NumberFormatter nf = (NumberFormatter) jftfVal1X.getFormatter();
         jftfVal1X.setText(nf.getFormat().format(val1X));
     }
 
-    public void setIndex(int index) {
-        jcb.setSelectedIndex(index);
-        jftfVal1X.setVisible(index == 0);
-        jpVal2X.setVisible(index != 0);
+    private double getVal1X() {
+        double val = Double.NaN;
+        try {
+            NumberFormatter nf = (NumberFormatter) jftfVal1X.getFormatter();
+            val = ((Number) nf.stringToValue(jftfVal1X.getText())).doubleValue();
+        } catch (ParseException ex) {
+            Logger.getLogger(Val2XPanel.class.getName()).log(Level.SEVERE, null, ex);
+        }
+        return val;
     }
 
-    public int getIndex() {
-        return jcb.getSelectedIndex();
+    private void setVal2X(double val2X) {
+        jpVal2X.setVal2X(val2X);
     }
 
-    public void addCBAction(ActionListener al) {
-        jcb.addActionListener(al);
+    private double getVal2X() {
+        return jpVal2X.getVal2X();
     }
 
     /**
@@ -123,15 +151,15 @@ public final class DataPanel extends javax.swing.JPanel {
     // <editor-fold defaultstate="collapsed" desc="Generated Code">//GEN-BEGIN:initComponents
     private void initComponents() {
 
-        jcb = new javax.swing.JComboBox();
+        jcbValType = new javax.swing.JComboBox();
         jftfVal1X = new javax.swing.JFormattedTextField();
         jlTableRow = new javax.swing.JLabel();
 
         setLayout(null);
 
-        jcb.setModel(new javax.swing.DefaultComboBoxModel(new String[] { "1 X", "2 X" }));
-        add(jcb);
-        jcb.setBounds(40, 2, 50, 20);
+        jcbValType.setModel(new javax.swing.DefaultComboBoxModel(new String[] { "1 X", "2 X" }));
+        add(jcbValType);
+        jcbValType.setBounds(40, 2, 50, 20);
 
         jftfVal1X.setFormatterFactory(new javax.swing.text.DefaultFormatterFactory(new javax.swing.text.NumberFormatter(new java.text.DecimalFormat("#0.00"))));
         add(jftfVal1X);
@@ -144,32 +172,9 @@ public final class DataPanel extends javax.swing.JPanel {
 
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
-    private javax.swing.JComboBox jcb;
+    private javax.swing.JComboBox jcbValType;
     private javax.swing.JFormattedTextField jftfVal1X;
     private javax.swing.JLabel jlTableRow;
     // End of variables declaration//GEN-END:variables
-
-    boolean isVal1X() {
-        return jcb.getSelectedIndex() == 0;
-    }
-
-    void setVal2X(double val2X) {
-        jpVal2X.setVal2X(val2X);
-    }
-
-    double getVal1X() {
-        double val = Double.NaN;
-        try {            
-            NumberFormatter nf = (NumberFormatter) jftfVal1X.getFormatter();
-            val = ((Number)nf.stringToValue(jftfVal1X.getText())).doubleValue();
-        } catch (ParseException ex) {
-            Logger.getLogger(Val2XPanel.class.getName()).log(Level.SEVERE, null, ex);
-        }
-        return val;
-    }
-
-    double getVal2X() {
-        return jpVal2X.getVal2X();
-    }
 
 }

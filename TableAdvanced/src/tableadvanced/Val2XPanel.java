@@ -1,7 +1,6 @@
 package tableadvanced;
 
 import java.awt.Rectangle;
-import java.text.DecimalFormat;
 import java.text.ParseException;
 import java.util.logging.Level;
 import java.util.logging.Logger;

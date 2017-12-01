@@ -7,9 +7,9 @@ package tableadvanced;
  */
 public class TableValue {
 
-    private final int indexValType;
-    private double val1X;
-    private double val2X;
+    private int indexValType = -1;
+    private double val1X = Double.NaN;
+    private double val2X = Double.NaN;
 
     public TableValue(int indexValType) {
         this.indexValType = indexValType;
@@ -58,7 +58,7 @@ public class TableValue {
 
     @Override
     public String toString() {
-        return "index = " + indexValType + ", val1X = " + val1X + ", val2X = " + val2X;
+        return "indexValType = " + indexValType + ", val1X = " + val1X + ", val2X = " + val2X;
     }
 
     private boolean isEqualDoubles(double val1, double val2) {

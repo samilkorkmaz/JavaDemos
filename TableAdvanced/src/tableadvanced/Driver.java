@@ -9,7 +9,7 @@ import javax.swing.JOptionPane;
 import javax.swing.JScrollPane;
 
 /**
- * Demo of table that has a panel containing a combo box that changes the values in formatted text field.</br>
+ * Demo of table that has a panel containing a combo box that changes the value in formatted text field.</br>
  * Note that a JTable has the following three concepts that you need to understand:<br/>
  * 1. Value: The underlying object that holds the values.<br/>
  * 2. Renderer: The component that draws the cells when they are not edited.<br/>
@@ -19,7 +19,7 @@ import javax.swing.JScrollPane;
  */
 public class Driver {
 
-    private static final int MAX_ROW_COUNT = 15;    
+    private static final int MAX_ROW_COUNT = 15;
 
     public static void main(String[] args) {
         final JFrame jf = new JFrame("Advanced Table Demo - Şamil Korkmaz, Nov 2017");
@@ -28,13 +28,14 @@ public class Driver {
 
         final MyTableModel tableModel = new MyTableModel();
         MyTable table = new MyTable(tableModel, DataPanel.PANEL_HEIGTH, MAX_ROW_COUNT);
-        EditorRenderer editorRenderer = new EditorRenderer(table);
-        table.setDefaultRenderer(Object.class, editorRenderer);
-        table.setDefaultEditor(Object.class, editorRenderer);
+        RendererEditor rendererEditor = new RendererEditor(table);
+        table.setDefaultRenderer(Object.class, rendererEditor);
+        table.setDefaultEditor(Object.class, rendererEditor);
         tableModel.addRow(new TableValue(0, 10)); //0: input val is 1X
+        tableModel.addRow(new TableValue(1, 33)); //1: input val is 1X
 
         JScrollPane jsp = new JScrollPane(table, JScrollPane.VERTICAL_SCROLLBAR_ALWAYS, JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
-        jsp.setBounds(10, 10, DataPanel.PANEL_WIDTH, 10*DataPanel.PANEL_HEIGTH);
+        jsp.setBounds(10, 10, DataPanel.PANEL_WIDTH, 10 * DataPanel.PANEL_HEIGTH);
         jf.add(jsp);
 
         JButton jb = new JButton("Add Row");
@@ -46,7 +47,7 @@ public class Driver {
                     JOptionPane.showMessageDialog(jf, "Cannot add more than " + MAX_ROW_COUNT + " rows!"
                             + "\nTo change max row nb, open Driver.java and change MAX_ROW_COUNT.", "Error", JOptionPane.ERROR_MESSAGE);
                 } else {
-                    tableModel.addRow(new TableValue(1, 15.0)); //1: input val is 2X
+                    tableModel.addRow(new TableValue(1, 44)); //1: input val is 2X
                 }
             }
         });
